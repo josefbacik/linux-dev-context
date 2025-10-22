@@ -1676,139 +1676,45 @@ echo "Build complete in $OUTPUT/"
 
 ## Module Building
 
-Building kernel modules separately from the main kernel is common during driver development.
+Kernel modules can be built as part of the main kernel (in-tree) or separately (out-of-tree). Module building is covered comprehensively in separate documentation:
 
-### In-Tree Module Building
+- **[module-building.md](module-building.md)** - Complete guide covering all aspects of module development including:
+  - In-tree and out-of-tree module building
+  - Multi-file modules and complex Makefiles
+  - Module signing and secure boot
+  - Dependencies and symbol management
+  - Compression and optimization
+  - Troubleshooting and best practices
+
+- **[module-building-quick-ref.md](module-building-quick-ref.md)** - Quick reference cheat sheet with:
+  - Essential commands and syntax
+  - Makefile templates
+  - Common patterns and examples
+
+### Quick Examples
 
 ```bash
 # Build all modules
 make modules -j$(nproc)
 
-# Build specific module directory
+# Build specific in-tree module
 make M=drivers/net/ethernet/intel/e1000e -j$(nproc)
-
-# Or using subdirectory target
-make drivers/net/ethernet/intel/e1000e/ -j$(nproc)
-
-# Build single module
 make drivers/net/ethernet/intel/e1000e/e1000e.ko
+
+# Build external (out-of-tree) module
+make -C /lib/modules/$(uname -r)/build M=$PWD
 
 # Install modules
 sudo make modules_install
+make INSTALL_MOD_PATH=/custom/path modules_install
 
-# Install to custom location
-make INSTALL_MOD_PATH=/tmp/modules modules_install
+# Module operations
+sudo modprobe module_name    # Load with dependencies
+sudo rmmod module_name        # Unload module
+modinfo module_name.ko        # Show module information
 ```
 
-### Out-of-Tree Module Development
-
-Create a standalone module that builds against installed kernel headers:
-
-```bash
-# hello.c - Simple kernel module
-cat > hello.c << 'EOF'
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/kernel.h>
-
-static int __init hello_init(void)
-{
-    printk(KERN_INFO "Hello, World!\n");
-    return 0;
-}
-
-static void __exit hello_exit(void)
-{
-    printk(KERN_INFO "Goodbye, World!\n");
-}
-
-module_init(hello_init);
-module_exit(hello_exit);
-
-MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Hello World Module");
-EOF
-
-# Makefile for out-of-tree module
-cat > Makefile << 'EOF'
-obj-m := hello.o
-
-KDIR := /lib/modules/$(shell uname -r)/build
-PWD := $(shell pwd)
-
-all:
-	$(MAKE) -C $(KDIR) M=$(PWD) modules
-
-clean:
-	$(MAKE) -C $(KDIR) M=$(PWD) clean
-
-install:
-	$(MAKE) -C $(KDIR) M=$(PWD) modules_install
-EOF
-
-# Build the module
-make
-
-# Load the module
-sudo insmod hello.ko
-
-# Verify it loaded
-lsmod | grep hello
-dmesg | tail
-
-# Unload the module
-sudo rmmod hello
-```
-
-### Module Signing
-
-For secure boot systems, modules must be signed:
-
-```bash
-# Generate signing keys
-openssl req -new -x509 -newkey rsa:4096 -keyout signing_key.pem \
-    -out signing_key.x509 -days 365 -nodes -subj "/CN=Module Signing/"
-
-# Configure kernel with module signing
-make menuconfig
-# Enable: CONFIG_MODULE_SIG=y
-# Enable: CONFIG_MODULE_SIG_ALL=y
-# Select: CONFIG_MODULE_SIG_SHA256=y
-
-# Build with automatic signing
-make -j$(nproc)
-make modules_install
-
-# Or manually sign a module
-scripts/sign-file sha256 signing_key.pem signing_key.x509 module.ko
-
-# Verify signature
-modinfo module.ko | grep sig
-```
-
-### Module Dependencies
-
-Handle module dependencies properly:
-
-```bash
-# For modules depending on symbols from other external modules
-# First module exports symbols
-make -C /lib/modules/$(uname -r)/build M=$PWD
-
-# Second module uses those symbols
-# Copy Module.symvers from first module
-cp ../module1/Module.symvers .
-
-# Or specify path to symbols
-make -C /lib/modules/$(uname -r)/build M=$PWD \
-    KBUILD_EXTRA_SYMBOLS=../module1/Module.symvers
-
-# Generate and install dependency information
-sudo depmod -a
-
-# Module will load dependencies automatically
-sudo modprobe mymodule
-```
+For detailed information including multi-file modules, signing, dependencies, compression, and troubleshooting, refer to the dedicated module documentation linked above.
 
 ## Kernel Configuration Methods
 
