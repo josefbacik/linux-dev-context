@@ -1,0 +1,22 @@
+# Editor files
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
+*.sublime-*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts (if we add examples)
+*.o
+*.ko
+*.mod.c
+.*.cmd
+modules.order
+Module.symvers
+
+# Temporary files
+*.tmp
